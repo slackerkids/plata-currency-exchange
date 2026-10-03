@@ -40,10 +40,10 @@ plata-currency-exchange
 
 I want to use standard library packages as much as possible, to make codebase less bloated and keep dependencies low
 
-1. Database: `PostgreSQL` with `github.com/jackc/pgx/v5` as driver.
+1. Database: `PostgreSQL` with `github.com/jackc/pgx/v5` as driver and `github.com/pressly/goose/v3` for migrations.
    (As an alternative i would prefer to use `sqlite3` for database because of ease of use and for simple projects like this)
 2. Router: Standard `net/http`
-3. Env config: `github.com/joho/godotenv`
+3. Env config: `github.com/joho/godotenv` with `github.com/caarlos0/env/v11` for loading and parsing
 4. Logging: Standard `log/slog`
-5. Cron Jobs: `github.com/robfig/cron/v3`
+5. Cron Jobs: `github.com/robfig/cron/v3` not sure for now. Worker pool seems more interesting because of instant job pickup
 6. Containerization: `Docker`

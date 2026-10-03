@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/config"
 )
 
@@ -30,6 +32,10 @@ func New(ctx context.Context) (*Application, error) {
 
 	if err := app.setRepositories(ctx); err != nil {
 		return nil, fmt.Errorf("set repositories: %w", err)
+	}
+
+	if err := app.setMigrations(ctx); err != nil {
+		return nil, fmt.Errorf("set migrations: %w", err)
 	}
 
 	return app, nil
@@ -106,6 +112,22 @@ func (a *Application) setRepositories(ctx context.Context) error {
 	return nil
 }
 
+func (a *Application) setMigrations(ctx context.Context) error {
+	db := stdlib.OpenDBFromPool(a.postgresClient)
+	defer db.Close()
+
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("goose set dialect: %w", err)
+	}
+
+	if err := goose.Up(db, a.conf.MigrationsPath); err != nil {
+		return fmt.Errorf("goose up migrations: %w", err)
+	}
+
+	slog.InfoContext(ctx, "migrations up successfully")
+	return nil
+}
+
 func (a *Application) Start(ctx context.Context) error {
 	if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("HTTP server start: %w", err)
@@ -124,7 +146,9 @@ func (a *Application) Close(ctx context.Context) error {
 	}
 
 	// shut down database connection
-	// ...
+	if a.postgresClient != nil {
+		a.postgresClient.Close()
+	}
 
 	return nil
 }

@@ -15,6 +15,7 @@ const (
 type Configuration struct {
 	HTTPServerAddress  string `env:"HTTP_SERVER_ADDRESS"`
 	PostgresConnString string `env:"POSTGRES_CONN_STRING"`
+	MigrationsPath     string `env:"MIGRATIONS_PATH"`
 }
 
 func New() (*Configuration, error) {
