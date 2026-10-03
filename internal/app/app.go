@@ -6,11 +6,13 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/config"
 )
 
 type Application struct {
-	conf *config.Configuration
+	conf           *config.Configuration
+	postgresClient *pgxpool.Pool
 
 	httpServer *http.Server
 }
@@ -24,6 +26,10 @@ func New(ctx context.Context) (*Application, error) {
 
 	if err := app.setServer(); err != nil {
 		return nil, fmt.Errorf("set server: %w", err)
+	}
+
+	if err := app.setRepositories(ctx); err != nil {
+		return nil, fmt.Errorf("set repositories: %w", err)
 	}
 
 	return app, nil
@@ -82,6 +88,22 @@ func newRouter() *http.ServeMux {
 	mux.HandleFunc("GET /currency/{code}", http.NotFound)
 
 	return mux
+}
+
+func (a *Application) setRepositories(ctx context.Context) error {
+	pool, err := pgxpool.New(ctx, a.conf.PostgresConnString)
+	if err != nil {
+		return fmt.Errorf("database connection: %w", err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		return fmt.Errorf("database unreachable: %w", err)
+	}
+
+	// repositories here...
+
+	a.postgresClient = pool
+	return nil
 }
 
 func (a *Application) Start(ctx context.Context) error {
