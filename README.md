@@ -22,6 +22,8 @@ plata-currency-exchange
 │   └── exchange-rate   // binary
 ├── cmd
 │   └── main.go         // entrypoint
+├── cmd
+│   └── .env            // env variables (.env.template loaded initially for 0 set-up)
 ├── go.mod
 └── internal
     ├── app
