@@ -47,3 +47,18 @@ I want to use standard library packages as much as possible, to make codebase le
 4. Logging: Standard `log/slog`
 5. Cron Jobs: `github.com/robfig/cron/v3` not sure for now. Worker pool seems more interesting because of instant job pickup
 6. Containerization: `Docker`
+
+### Database schema
+
+```mermaid
+erDiagram
+    currency {
+        uuid id PK
+        string base
+        string quote
+        string rate "Nullable"
+        enum status "PENDING, PROCESSING, DONE, FAILED"
+        timestamp updated_at
+        timestamp created_at
+    }
+```
