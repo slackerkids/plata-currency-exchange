@@ -4,6 +4,8 @@
 
 ## Implementation plan
 
+**For more schemas and thought process also view the [Excalidraw Board](https://excalidraw.com/#json=sxA28fw9w8fmw0wAcbWxB,Bqv_NjduPQ9_sEMA-PTSig)**
+
 ### Launch and build
 
 1. Use `Makefile` for build and run commands.
@@ -52,10 +54,10 @@ I want to use standard library packages as much as possible, to make codebase le
 
 ```mermaid
 erDiagram
-    currency {
+    quote {
         uuid id PK
-        string base
-        string quote
+        string base_currency
+        string quote_currency
         string rate "Nullable"
         enum status "PENDING, PROCESSING, DONE, FAILED"
         timestamp updated_at
