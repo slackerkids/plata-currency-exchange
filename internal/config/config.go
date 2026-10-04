@@ -9,13 +9,15 @@ import (
 )
 
 const (
-	configPath = "./configs/.env.template" // set to .env in production.
+	configPath = "./configs/.env"
 )
 
 type Configuration struct {
-	HTTPServerAddress  string `env:"HTTP_SERVER_ADDRESS"`
-	PostgresConnString string `env:"POSTGRES_CONN_STRING"`
-	MigrationsPath     string `env:"MIGRATIONS_PATH"`
+	HTTPServerAddress    string `env:"HTTP_SERVER_ADDRESS"`
+	PostgresConnString   string `env:"POSTGRES_CONN_STRING"`
+	MigrationsPath       string `env:"MIGRATIONS_PATH"`
+	ExchangeRatesBaseURL string `env:"EXCHANGE_RATES_BASE_URL"`
+	ExchangeRatesApiKey  string `env:"EXCHANGE_RATES_API_KEY"`
 }
 
 func New() (*Configuration, error) {
