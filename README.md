@@ -1,14 +1,18 @@
 # Plata Currency Exchange
 
-**Make sure your Go version is 1.27.1 or above**
+**Make sure your Go version is 1.27.1 or above and Docker is running**
+
+## Launch and build
+
+1. Use `Makefile` for build and run commands.
+- `make all` and then `make run` will start the server
+
+## Testing
+TODO: Add postman collection here
 
 ## Implementation plan
 
 **For more schemas and thought process also view the [Excalidraw Board](https://excalidraw.com/#json=sxA28fw9w8fmw0wAcbWxB,Bqv_NjduPQ9_sEMA-PTSig)**
-
-### Launch and build
-
-1. Use `Makefile` for build and run commands.
 
 ### Project structure
 

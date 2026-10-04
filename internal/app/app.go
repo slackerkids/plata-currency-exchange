@@ -10,11 +10,15 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/config"
+	"github.com/slackerkids/plata-currency-exchange.git/internal/service"
 )
 
 type Application struct {
 	conf           *config.Configuration
 	postgresClient *pgxpool.Pool
+
+	// Service
+	exchangeRateClient service.ExchangeRateClient
 
 	httpServer *http.Server
 }
