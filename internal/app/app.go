@@ -11,14 +11,23 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/config"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/service"
+	"github.com/slackerkids/plata-currency-exchange.git/internal/worker"
+)
+
+const (
+	maxConcurrentExchangeApiRequests = 100
 )
 
 type Application struct {
 	conf           *config.Configuration
 	postgresClient *pgxpool.Pool
 
+	// Worker
+	exchangeRateClient worker.ExchangeRateClient
+	quoteRepository    worker.QuoteRepository
+
 	// Service
-	exchangeRateClient service.ExchangeRateClient
+	jobQueue service.JobQueue
 
 	httpServer *http.Server
 }
@@ -40,6 +49,10 @@ func New(ctx context.Context) (*Application, error) {
 
 	if err := app.setMigrations(ctx); err != nil {
 		return nil, fmt.Errorf("set migrations: %w", err)
+	}
+
+	if err := app.setWorkers(ctx); err != nil {
+		return nil, fmt.Errorf("set workers: %w", err)
 	}
 
 	return app, nil
@@ -129,6 +142,18 @@ func (a *Application) setMigrations(ctx context.Context) error {
 	}
 
 	slog.InfoContext(ctx, "migrations up successfully")
+	return nil
+}
+
+func (a *Application) setWorkers(ctx context.Context) error {
+	w := worker.NewPool(
+		ctx,
+		maxConcurrentExchangeApiRequests,
+		a.quoteRepository,
+		a.exchangeRateClient,
+	)
+
+	a.jobQueue = w
 	return nil
 }
 
