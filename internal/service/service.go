@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"uuid"
+
+	"github.com/slackerkids/plata-currency-exchange.git/internal/model"
 )
 
 type Job struct {
@@ -17,8 +19,9 @@ type JobQueue interface {
 }
 
 type QuoteRepository interface {
-	GetLatestQuote(ctx context.Context, base string, quote string) (*Job, error)
-	CreateQuote(ctx context.Context, job *Job) error
+	CreateOrGetJob(ctx context.Context, base, quote string) (*Job, error)
+	GetQuoteByID(ctx context.Context, id uuid.UUID) (*model.QuoteResult, error)
+	GetLatestQuote(ctx context.Context, base, quote string) (*model.QuoteResult, error)
 }
 
 type Service struct {
@@ -34,27 +37,32 @@ func New(jobQueue JobQueue, quoteRepository QuoteRepository) *Service {
 }
 
 func (s *Service) UpdateQuote(ctx context.Context, base, quote string) (*Job, error) {
-	// 1. Try to create new job
-	job := &Job{
-		ID:    uuid.NewV7(),
-		Base:  base,
-		Quote: quote,
-	}
-
-	err := s.quoteRepository.CreateQuote(ctx, job)
-	if err == nil {
-		if err := s.jobQueue.AddJob(job); err != nil {
-			return nil, fmt.Errorf("adding job: %w", err)
-		}
-
-		return job, nil
-	}
-
-	// 2. If job exists in db return existing job
-	existingJob, err := s.quoteRepository.GetLatestQuote(ctx, base, quote)
+	job, err := s.quoteRepository.CreateOrGetJob(ctx, base, quote)
 	if err != nil {
-		return nil, fmt.Errorf("get latest job: %w", err)
+		return nil, fmt.Errorf("create or get job: %w", err)
 	}
 
-	return existingJob, nil
+	if err := s.jobQueue.AddJob(job); err != nil {
+		return nil, fmt.Errorf("adding job: %w", err)
+	}
+
+	return job, nil
+}
+
+func (s *Service) GetQuoteByID(ctx context.Context, id uuid.UUID) (*model.QuoteResult, error) {
+	result, err := s.quoteRepository.GetQuoteByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get quote by id: %w", err)
+	}
+
+	return result, nil
+}
+
+func (s *Service) GetLatestQuote(ctx context.Context, base, quote string) (*model.QuoteResult, error) {
+	result, err := s.quoteRepository.GetLatestQuote(ctx, base, quote)
+	if err != nil {
+		return nil, fmt.Errorf("get latest quote: %w", err)
+	}
+
+	return result, nil
 }

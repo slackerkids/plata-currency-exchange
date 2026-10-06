@@ -62,6 +62,6 @@ func (c *Client) GetQuoteByCurrencyCode(ctx context.Context, base, quote string)
 	return &model.QuoteResult{
 		Base:  base,
 		Quote: quote,
-		Rate:  result.Rates[quote],
+		Rate:  new(result.Rates[quote]),
 	}, nil
 }

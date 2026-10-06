@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS supported_currencies (
 );
 
 CREATE TABLE IF NOT EXISTS quote (
-        id UUID PRIMARY KEY NOT NULL,
+        id UUID DEFAULT uuidv7() PRIMARY KEY NOT NULL,
         base_currency CHAR(3) REFERENCES supported_currencies(name) NOT NULL,
         quote_currency CHAR(3) REFERENCES supported_currencies(name) NOT NULL,
         rate DECIMAL,
