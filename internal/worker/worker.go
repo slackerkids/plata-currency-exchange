@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 
 	"github.com/slackerkids/plata-currency-exchange.git/internal/model"
@@ -13,7 +12,7 @@ import (
 var ErrJobQueueIsFull = errors.New("job queue is full")
 
 type QuoteRepository interface {
-	SetRate(result *model.QuoteResult)
+	SetRate(ctx context.Context, result *model.QuoteResult) error
 	SetStatusFailed(ctx context.Context, job *service.Job) error
 }
 
@@ -64,13 +63,16 @@ func (w *Pool) worker(ctx context.Context) {
 				slog.ErrorContext(ctx, "fetching external api", "error", err)
 
 				if err := w.quoteRepository.SetStatusFailed(ctx, &job); err != nil {
-					slog.ErrorContext(ctx, "set status to db", "error", err)
+					slog.ErrorContext(ctx, "set status to db", "error", err, "id", job.ID)
 				}
 
 				continue
 			}
 
-			w.quoteRepository.SetRate(result)
+			if err := w.quoteRepository.SetRate(ctx, result); err != nil {
+				slog.ErrorContext(ctx, "set rate to db", "error", err, "id", job.ID)
+				continue
+			}
 		}
 
 	}
@@ -82,7 +84,7 @@ func (w *Pool) AddJob(job *service.Job) error {
 	select {
 	case w.queue <- *job:
 	default:
-		err = fmt.Errorf("adding job: %w", ErrJobQueueIsFull)
+		err = ErrJobQueueIsFull
 	}
 
 	return err
