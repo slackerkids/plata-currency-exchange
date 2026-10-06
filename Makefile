@@ -17,3 +17,6 @@ postgres:
 
 clean:
 	docker rm -f postgres
+
+db-connect:
+	PGPASSWORD=postgres psql -h localhost -U postgres -p 5432 plata-currency-exchange

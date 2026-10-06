@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/config"
+	"github.com/slackerkids/plata-currency-exchange.git/internal/handler"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/service"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/worker"
 )
@@ -24,10 +25,14 @@ type Application struct {
 
 	// Worker
 	exchangeRateClient worker.ExchangeRateClient
-	quoteRepository    worker.QuoteRepository
+	workerRepository   worker.QuoteRepository
 
 	// Service
-	jobQueue service.JobQueue
+	jobQueue          service.JobQueue
+	serviceRepository service.QuoteRepository
+
+	// Handler
+	quoteService handler.Service
 
 	httpServer *http.Server
 }
@@ -53,6 +58,10 @@ func New(ctx context.Context) (*Application, error) {
 
 	if err := app.setWorkers(ctx); err != nil {
 		return nil, fmt.Errorf("set workers: %w", err)
+	}
+
+	if err := app.setService(); err != nil {
+		return nil, fmt.Errorf("set service: %w", err)
 	}
 
 	return app, nil
@@ -149,11 +158,18 @@ func (a *Application) setWorkers(ctx context.Context) error {
 	w := worker.NewPool(
 		ctx,
 		maxConcurrentExchangeApiRequests,
-		a.quoteRepository,
+		a.workerRepository,
 		a.exchangeRateClient,
 	)
 
 	a.jobQueue = w
+	return nil
+}
+
+func (a *Application) setService() error {
+	svc := service.New(a.jobQueue, a.serviceRepository)
+
+	a.quoteService = svc
 	return nil
 }
 
