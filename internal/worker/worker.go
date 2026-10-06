@@ -2,15 +2,19 @@ package worker
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/slackerkids/plata-currency-exchange.git/internal/model"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/service"
 )
 
+var ErrJobQueueIsFull = errors.New("job queue is full")
+
 type QuoteRepository interface {
 	SetRate(result *model.QuoteResult)
-	SetStatusFailed() // TODO: add params and return value
+	SetStatusFailed(ctx context.Context, job *service.Job) error
 }
 
 type ExchangeRateClient interface {
@@ -43,6 +47,9 @@ func NewPool(
 }
 
 func (w *Pool) worker(ctx context.Context) {
+	// TODO: Think about if database will fail and get quote by currency code will fail
+	// 1. Backoff Retry
+	// 2. If retries not helped then we should finish and return error up to main and close.
 	for {
 		select {
 		case <-ctx.Done():
@@ -55,7 +62,11 @@ func (w *Pool) worker(ctx context.Context) {
 			result, err := w.exchangeRateClient.GetQuoteByCurrencyCode(ctx, job.Base, job.Quote)
 			if err != nil {
 				slog.ErrorContext(ctx, "fetching external api", "error", err)
-				w.quoteRepository.SetStatusFailed()
+
+				if err := w.quoteRepository.SetStatusFailed(ctx, &job); err != nil {
+					slog.ErrorContext(ctx, "set status to db", "error", err)
+				}
+
 				continue
 			}
 
@@ -65,12 +76,14 @@ func (w *Pool) worker(ctx context.Context) {
 	}
 }
 
-func (w *Pool) AddJob(job service.Job) (queueFull bool) {
+func (w *Pool) AddJob(job *service.Job) error {
+	var err error
+
 	select {
-	case w.queue <- job:
+	case w.queue <- *job:
 	default:
-		queueFull = true
+		err = fmt.Errorf("adding job: %w", ErrJobQueueIsFull)
 	}
 
-	return
+	return err
 }

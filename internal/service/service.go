@@ -11,8 +11,9 @@ type Job struct {
 }
 
 type JobQueue interface {
-	AddJob(job Job) bool
+	AddJob(job *Job) error
 }
 
 type Service struct {
+	jobQueue JobQueue
 }
