@@ -5,9 +5,11 @@
 ## Launch and build
 
 1. Use `Makefile` for build and run commands.
+
 - `make all` and then `make run` will start the server
 
 ## Testing
+
 TODO: Add postman collection here
 
 ## Implementation plan
@@ -58,13 +60,26 @@ I want to use standard library packages as much as possible, to make codebase le
 
 ```mermaid
 erDiagram
+    supported_currencies ||--o{ quote : has
+
     quote {
         uuid id PK
-        string base_currency
-        string quote_currency
-        string rate "Nullable"
-        enum status "PENDING, PROCESSING, DONE, FAILED"
-        timestamp updated_at
+        string base_currency FK
+        string quote_currency FK
+        decimal rate "Nullable"
+        enum status "PENDING, DONE, FAILED"
+        timestamp finished_at "Nullable"
         timestamp created_at
     }
+
+    supported_currencies {
+        string name PK
+    }
+```
+
+```sql
+SELECT rate FROM quote
+WHERE status = "DONE" AND base_currency = $1 AND quote_currency = $2
+ORDER BY updated_at DESC
+LIMIT 1;
 ```
