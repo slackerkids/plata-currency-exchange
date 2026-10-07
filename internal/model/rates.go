@@ -1,5 +1,7 @@
 package model
 
+import "uuid"
+
 var (
 	StatusPending = StatusEnum{name: "PENDING"}
 	StatusDone    = StatusEnum{name: "DONE"}
@@ -20,6 +22,7 @@ func (s StatusEnum) String() string {
 }
 
 type QuoteResult struct {
+	ID        uuid.UUID
 	Base      string
 	Quote     string
 	Rate      *float64
