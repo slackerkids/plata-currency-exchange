@@ -19,7 +19,7 @@ type JobQueue interface {
 }
 
 type QuoteRepository interface {
-	CreateOrGetJob(ctx context.Context, base, quote string) (*Job, error)
+	GetOrCreateJob(ctx context.Context, job *Job) (*Job, error)
 	GetQuoteByID(ctx context.Context, id uuid.UUID) (*model.QuoteResult, error)
 	GetLatestQuote(ctx context.Context, base, quote string) (*model.QuoteResult, error)
 }
@@ -37,9 +37,19 @@ func New(jobQueue JobQueue, quoteRepository QuoteRepository) *Service {
 }
 
 func (s *Service) UpdateQuote(ctx context.Context, base, quote string) (*Job, error) {
-	job, err := s.quoteRepository.CreateOrGetJob(ctx, base, quote)
+	job := &Job{
+		ID:    uuid.NewV7(),
+		Base:  base,
+		Quote: quote,
+	}
+
+	createdJob, err := s.quoteRepository.GetOrCreateJob(ctx, job)
 	if err != nil {
 		return nil, fmt.Errorf("create or get job: %w", err)
+	}
+
+	if job.ID != createdJob.ID {
+		return createdJob, nil
 	}
 
 	if err := s.jobQueue.AddJob(job); err != nil {

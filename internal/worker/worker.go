@@ -17,7 +17,7 @@ type QuoteRepository interface {
 }
 
 type ExchangeRateClient interface {
-	GetQuoteByCurrencyCode(ctx context.Context, base, quote string) (*model.QuoteResult, error)
+	GetQuoteByCurrencyCode(ctx context.Context, job *service.Job) (*model.QuoteResult, error)
 }
 
 type Pool struct {
@@ -58,7 +58,7 @@ func (w *Pool) worker(ctx context.Context) {
 				return
 			}
 
-			result, err := w.exchangeRateClient.GetQuoteByCurrencyCode(ctx, job.Base, job.Quote)
+			result, err := w.exchangeRateClient.GetQuoteByCurrencyCode(ctx, &job)
 			if err != nil {
 				slog.ErrorContext(ctx, "fetching external api", "error", err)
 

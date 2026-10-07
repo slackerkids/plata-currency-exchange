@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/slackerkids/plata-currency-exchange.git/internal/model"
+	"github.com/slackerkids/plata-currency-exchange.git/internal/service"
 )
 
 const (
@@ -33,7 +34,7 @@ func New(baseURL, apiKey string) *Client {
 	}
 }
 
-func (c *Client) GetQuoteByCurrencyCode(ctx context.Context, base, quote string) (*model.QuoteResult, error) {
+func (c *Client) GetQuoteByCurrencyCode(ctx context.Context, job *service.Job) (*model.QuoteResult, error) {
 	request, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+latestResultsPath, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("get request: %w", err)
@@ -43,8 +44,8 @@ func (c *Client) GetQuoteByCurrencyCode(ctx context.Context, base, quote string)
 	values := request.URL.Query()
 
 	values.Add("access_key", c.apiKey)
-	values.Add("base", base)
-	values.Add("symbols", quote)
+	values.Add("base", job.Base)
+	values.Add("symbols", job.Quote)
 
 	request.URL.RawQuery = values.Encode()
 
@@ -60,8 +61,10 @@ func (c *Client) GetQuoteByCurrencyCode(ctx context.Context, base, quote string)
 	}
 
 	return &model.QuoteResult{
-		Base:  base,
-		Quote: quote,
-		Rate:  new(result.Rates[quote]),
+		ID:     job.ID,
+		Base:   job.Base,
+		Quote:  job.Quote,
+		Status: model.StatusDone,
+		Rate:   new(result.Rates[job.Quote]),
 	}, nil
 }
