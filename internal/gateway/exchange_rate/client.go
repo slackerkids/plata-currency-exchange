@@ -64,7 +64,7 @@ func (c *Client) GetQuoteByCurrencyCode(ctx context.Context, job *service.Job) (
 		ID:     job.ID,
 		Base:   job.Base,
 		Quote:  job.Quote,
-		Status: model.StatusDone,
+		Status: "DONE",
 		Rate:   new(result.Rates[job.Quote]),
 	}, nil
 }

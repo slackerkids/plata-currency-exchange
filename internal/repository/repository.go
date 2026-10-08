@@ -25,22 +25,22 @@ const (
 	`
 
 	getLatestQuoteQuery = `
-	SELECT (id, rate, status, finished_at, created_at) 
+	SELECT id, rate, status, finished_at, created_at
 	FROM quote 
 	WHERE base_currency = $1 AND quote_currency = $2 AND status = 'DONE'
 	ORDER BY finished_at DESC LIMIT 1
 	`
 
 	getOrCreateJobQuery = `
-	INSERT INTO quote (base_currency, quote_currency)
-	VALUES ($1, $2)
+	INSERT INTO quote (id,base_currency, quote_currency)
+	VALUES ($1, $2, $3)
 	ON CONFLICT (base_currency, quote_currency) WHERE status = 'PENDING'
 	DO UPDATE SET base_currency = EXCLUDED.base_currency
 	RETURNING id;
 	`
 
 	getQuoteByIDQuery = `
-	SELECT (base_currency, quote_currency, rate, status, finished_at, created_at) 
+	SELECT base_currency, quote_currency, rate, status, finished_at, created_at 
 	FROM quote 
 	WHERE id = $1
 	`
@@ -61,7 +61,7 @@ func (r *Repository) SetRate(ctx context.Context, result *model.QuoteResult) err
 		ctx,
 		setRateQuery,
 		result.Rate,
-		result.Status.String(),
+		result.Status,
 		time.Now(),
 		result.ID,
 	)
@@ -77,7 +77,7 @@ func (r *Repository) SetStatusFailed(ctx context.Context, job *service.Job) erro
 	_, err := r.db.Exec(
 		ctx,
 		setStatusFailedQuery,
-		model.StatusFail.String(),
+		"FAILED",
 		time.Now(),
 		job.ID,
 	)
@@ -107,7 +107,7 @@ func (r *Repository) GetLatestQuote(ctx context.Context, base string, quote stri
 		&quoteRes.ID,
 		&quoteRes.Rate,
 		&quoteRes.Status,
-		&quoteRes.UpdatedAt,
+		&quoteRes.FinishedAt,
 		&quoteRes.CreatedAt,
 	); err != nil {
 		return nil, fmt.Errorf("getting latest quote: %w", err)
@@ -125,6 +125,7 @@ func (r *Repository) GetOrCreateJob(ctx context.Context, job *service.Job) (*ser
 	row := r.db.QueryRow(
 		ctx,
 		getOrCreateJobQuery,
+		job.ID,
 		job.Base,
 		job.Quote,
 	)
@@ -147,12 +148,13 @@ func (r *Repository) GetQuoteByID(ctx context.Context, id uuid.UUID) (*model.Quo
 		id,
 	)
 
+	// base_currency, quote_currency, rate, status, finished_at, created_at
 	if err := row.Scan(
 		&quoteRes.Base,
 		&quoteRes.Quote,
 		&quoteRes.Rate,
 		&quoteRes.Status,
-		&quoteRes.UpdatedAt,
+		&quoteRes.FinishedAt,
 		&quoteRes.CreatedAt,
 	); err != nil {
 		return nil, fmt.Errorf("getting latest quote: %w", err)

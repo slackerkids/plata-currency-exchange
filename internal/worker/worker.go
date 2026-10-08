@@ -41,7 +41,6 @@ func NewPool(
 	for range numWorker {
 		go p.worker(ctx)
 	}
-
 	return p
 }
 
