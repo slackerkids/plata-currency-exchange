@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/slackerkids/plata-currency-exchange.git/internal/app"
 )
@@ -26,8 +27,11 @@ func main() {
 	go func() {
 		<-signalCh
 
-		if err := application.Close(ctx); err != nil {
-			slog.ErrorContext(ctx, "closing program", "error", err)
+		timeOutCtx, timeOutCancel := context.WithTimeout(ctx, time.Second*15)
+		defer timeOutCancel()
+
+		if err := application.Close(timeOutCtx); err != nil {
+			slog.ErrorContext(timeOutCtx, "closing program", "error", err)
 		}
 		cancel()
 	}()

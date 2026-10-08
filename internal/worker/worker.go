@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync"
 
 	"github.com/slackerkids/plata-currency-exchange.git/internal/model"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/service"
@@ -24,30 +25,32 @@ type Pool struct {
 	queue              chan service.Job
 	quoteRepository    QuoteRepository
 	exchangeRateClient ExchangeRateClient
+	wg                 sync.WaitGroup
 }
 
 func NewPool(
 	ctx context.Context,
 	numWorker int,
+	queueSize int,
 	quoteRepository QuoteRepository,
 	exchangeRateClient ExchangeRateClient,
 ) *Pool {
 	p := &Pool{
-		queue:              make(chan service.Job, numWorker),
+		queue:              make(chan service.Job, queueSize),
 		quoteRepository:    quoteRepository,
 		exchangeRateClient: exchangeRateClient,
+		wg:                 sync.WaitGroup{},
 	}
 
 	for range numWorker {
-		go p.worker(ctx)
+		p.wg.Go(func() {
+			p.worker(ctx)
+		})
 	}
 	return p
 }
 
 func (w *Pool) worker(ctx context.Context) {
-	// TODO: Think about if database will fail and get quote by currency code will fail
-	// 1. Backoff Retry
-	// 2. If retries not helped then we should finish and return error up to main and close.
 	for {
 		select {
 		case <-ctx.Done():
@@ -87,4 +90,21 @@ func (w *Pool) AddJob(job *service.Job) error {
 	}
 
 	return err
+}
+
+func (w *Pool) Close(ctx context.Context) error {
+	jobsDone := make(chan struct{})
+
+	go func() {
+		close(w.queue)
+		w.wg.Wait()
+		close(jobsDone)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-jobsDone:
+		return nil
+	}
 }

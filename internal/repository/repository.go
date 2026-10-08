@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"iter"
 	"time"
 	"uuid"
 
@@ -43,6 +44,13 @@ const (
 	SELECT base_currency, quote_currency, rate, status, finished_at, created_at 
 	FROM quote 
 	WHERE id = $1
+	`
+
+	listPendingJobsQuery = `
+	SELECT id, base_currency, quote_currency
+	FROM quote
+	WHERE status = 'PENDING'
+	ORDER BY created_at ASC
 	`
 )
 
@@ -161,4 +169,28 @@ func (r *Repository) GetQuoteByID(ctx context.Context, id uuid.UUID) (*model.Quo
 	}
 
 	return quoteRes, nil
+}
+
+func (r *Repository) ListPendingJobs(ctx context.Context) (iter.Seq2[*service.Job, error], error) {
+	rows, err := r.db.Query(
+		ctx,
+		listPendingJobsQuery,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(yield func(*service.Job, error) bool) {
+		defer rows.Close()
+
+		for rows.Next() {
+			var job service.Job
+			err := rows.Scan(&job.ID, &job.Base, &job.Quote)
+
+			if !yield(&job, err) {
+				break
+			}
+		}
+
+	}, nil
 }

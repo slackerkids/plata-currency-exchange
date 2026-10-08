@@ -3,6 +3,8 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
@@ -27,8 +29,14 @@ func New() (*Configuration, error) {
 
 	conf := &Configuration{}
 
-	if err := godotenv.Load(configPath); err != nil {
-		return nil, fmt.Errorf("failed to load data from env file: %s, %w", configPath, err)
+	if configPath != "" {
+		if err := godotenv.Load(configPath); err != nil {
+			if errors.Is(err, os.ErrNotExist) || os.IsNotExist(err) {
+				slog.Warn("No env file found, falling back to OS environment variables", "configPath", configPath)
+			} else {
+				return nil, fmt.Errorf("failed to load env file %s: %w", configPath, err)
+			}
+		}
 	}
 
 	if err := env.Parse(conf); err != nil {

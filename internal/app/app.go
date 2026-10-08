@@ -19,7 +19,16 @@ import (
 
 const (
 	maxConcurrentExchangeApiRequests = 100
+	queueSize                        = 10_000
 )
+
+type RecoveryService interface {
+	RecoverJobs(ctx context.Context) error
+}
+
+type JobCloser interface {
+	Close(ctx context.Context) error
+}
 
 type Application struct {
 	conf           *config.Configuration
@@ -35,6 +44,10 @@ type Application struct {
 
 	// Handler
 	quoteService handler.Service
+
+	// Application
+	recoveryService RecoveryService
+	jobCloser       JobCloser
 
 	httpServer *http.Server
 }
@@ -64,6 +77,10 @@ func New(ctx context.Context) (*Application, error) {
 
 	if err := app.setService(); err != nil {
 		return nil, fmt.Errorf("set service: %w", err)
+	}
+
+	if err := app.recoverJobs(ctx); err != nil {
+		return nil, fmt.Errorf("jobs recovery: %w", err)
 	}
 
 	if err := app.setServer(); err != nil {
@@ -181,11 +198,14 @@ func (a *Application) setWorkers(ctx context.Context) error {
 	w := worker.NewPool(
 		ctx,
 		maxConcurrentExchangeApiRequests,
+		queueSize,
 		a.workerRepository,
 		a.exchangeRateClient,
 	)
 
 	a.jobQueue = w
+	a.jobCloser = w
+
 	return nil
 }
 
@@ -193,7 +213,12 @@ func (a *Application) setService() error {
 	svc := service.New(a.jobQueue, a.serviceRepository)
 
 	a.quoteService = svc
+	a.recoveryService = svc
 	return nil
+}
+
+func (a *Application) recoverJobs(ctx context.Context) error {
+	return a.recoveryService.RecoverJobs(ctx)
 }
 
 func (a *Application) Start(ctx context.Context) error {
@@ -212,6 +237,11 @@ func (a *Application) Close(ctx context.Context) error {
 		}
 		slog.InfoContext(ctx, "server shutdown gracefully")
 	}
+
+	if err := a.jobCloser.Close(ctx); err != nil {
+		return fmt.Errorf("Closing jobs: %w", err)
+	}
+	slog.InfoContext(ctx, "jobs closed gracefully")
 
 	// shut down database connection
 	if a.postgresClient != nil {

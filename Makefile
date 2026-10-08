@@ -1,3 +1,5 @@
+.PHONY: build run postgres clean db-connect compose-up compose-down
+
 all: clean postgres
 
 run:
@@ -13,10 +15,17 @@ postgres:
 		-e POSTGRES_PASSWORD=postgres \
 		-e POSTGRES_DB=plata-currency-exchange \
 		-p 5432:5432 \
-		postgres
+		postgres:18.6
 
 clean:
 	docker rm -f postgres
 
 db-connect:
 	PGPASSWORD=postgres psql -h localhost -U postgres -p 5432 plata-currency-exchange
+
+compose-up:
+	docker compose up --build -d
+
+# Stop full stack
+compose-down:
+	docker compose down -v
