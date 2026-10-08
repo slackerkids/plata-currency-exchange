@@ -10,7 +10,9 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/config"
+	exchangerate "github.com/slackerkids/plata-currency-exchange.git/internal/gateway/exchange_rate"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/handler"
+	"github.com/slackerkids/plata-currency-exchange.git/internal/repository"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/service"
 	"github.com/slackerkids/plata-currency-exchange.git/internal/worker"
 )
@@ -44,10 +46,6 @@ func New(ctx context.Context) (*Application, error) {
 		return nil, fmt.Errorf("set config: %w", err)
 	}
 
-	if err := app.setServer(); err != nil {
-		return nil, fmt.Errorf("set server: %w", err)
-	}
-
 	if err := app.setRepositories(ctx); err != nil {
 		return nil, fmt.Errorf("set repositories: %w", err)
 	}
@@ -56,12 +54,20 @@ func New(ctx context.Context) (*Application, error) {
 		return nil, fmt.Errorf("set migrations: %w", err)
 	}
 
+	if err := app.setGatewayClient(); err != nil {
+		return nil, fmt.Errorf("set gateway client: %w", err)
+	}
+
 	if err := app.setWorkers(ctx); err != nil {
 		return nil, fmt.Errorf("set workers: %w", err)
 	}
 
 	if err := app.setService(); err != nil {
 		return nil, fmt.Errorf("set service: %w", err)
+	}
+
+	if err := app.setServer(); err != nil {
+		return nil, fmt.Errorf("set server: %w", err)
 	}
 
 	return app, nil
@@ -78,7 +84,7 @@ func (a *Application) setConfig() error {
 }
 
 func (a *Application) setServer() error {
-	mux := newRouter()
+	mux := a.newRouter()
 
 	srv := &http.Server{
 		Addr:    a.conf.HTTPServerAddress,
@@ -90,7 +96,9 @@ func (a *Application) setServer() error {
 }
 
 // mux router for http server
-func newRouter() *http.ServeMux {
+func (a *Application) newRouter() *http.ServeMux {
+	h := handler.New(a.quoteService)
+
 	mux := http.NewServeMux()
 
 	// 1. update quote
@@ -100,7 +108,7 @@ func newRouter() *http.ServeMux {
 	// 400: user send incorrect input (wrong currency and so on)
 	// 405: handled by builtin router
 	// 500: server problems (gateway, database connection...)
-	mux.HandleFunc("POST /quote", http.NotFound)
+	mux.HandleFunc("POST /quote", h.UpdateQuote)
 
 	// 2. get quote by id
 	// status of worker, if success return the result of the job
@@ -108,7 +116,7 @@ func newRouter() *http.ServeMux {
 	// 404: id not exist in db
 	// 405: handled by builtin router
 	// 500: same as p1
-	mux.HandleFunc("GET /quote/{id}", http.NotFound)
+	mux.HandleFunc("GET /quote/{id}", h.GetQuoteByID)
 
 	// 3. get last value of quote
 	// check the last entry from db
@@ -117,7 +125,7 @@ func newRouter() *http.ServeMux {
 	// 404: exchange rate for given quote not found
 	// 405: handled by builtin router
 	// 500: same as p1
-	mux.HandleFunc("GET /currency/{code}", http.NotFound)
+	mux.HandleFunc("GET /currency", h.GetLatestValueByCurrencyCode)
 
 	return mux
 }
@@ -132,9 +140,14 @@ func (a *Application) setRepositories(ctx context.Context) error {
 		return fmt.Errorf("database unreachable: %w", err)
 	}
 
-	// repositories here...
-
 	a.postgresClient = pool
+
+	repo := repository.New(a.postgresClient)
+
+	// Repo implements both repositories. Should be implemented separate repos.
+	a.workerRepository = repo
+	a.serviceRepository = repo
+
 	return nil
 }
 
@@ -151,6 +164,16 @@ func (a *Application) setMigrations(ctx context.Context) error {
 	}
 
 	slog.InfoContext(ctx, "migrations up successfully")
+	return nil
+}
+
+func (a *Application) setGatewayClient() error {
+	gatewayClient := exchangerate.New(
+		a.conf.ExchangeRatesBaseURL,
+		a.conf.ExchangeRatesApiKey,
+	)
+
+	a.exchangeRateClient = gatewayClient
 	return nil
 }
 
