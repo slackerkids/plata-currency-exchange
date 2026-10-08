@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"iter"
+	"log/slog"
 	"uuid"
 
 	"github.com/slackerkids/plata-currency-exchange.git/internal/model"
@@ -22,6 +24,7 @@ type QuoteRepository interface {
 	GetOrCreateJob(ctx context.Context, job *Job) (*Job, error)
 	GetQuoteByID(ctx context.Context, id uuid.UUID) (*model.QuoteResult, error)
 	GetLatestQuote(ctx context.Context, base, quote string) (*model.QuoteResult, error)
+	ListPendingJobs(ctx context.Context) (iter.Seq2[*Job, error], error)
 }
 
 type Service struct {
@@ -75,4 +78,22 @@ func (s *Service) GetLatestQuote(ctx context.Context, base, quote string) (*mode
 	}
 
 	return result, nil
+}
+
+func (s *Service) RecoverJobs(ctx context.Context) error {
+	jobsList, err := s.quoteRepository.ListPendingJobs(ctx)
+	if err != nil {
+		return fmt.Errorf("listing pending jobs: %w", err)
+	}
+
+	for job, err := range jobsList {
+		if err != nil {
+			return err
+		}
+
+		s.jobQueue.AddJob(job)
+	}
+
+	slog.InfoContext(ctx, "jobs recovery started")
+	return nil
 }
