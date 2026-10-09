@@ -6,20 +6,13 @@
 
 1. Set `.env` file in `./configs` directory
 
-   **Important: You need exchange rates api key from [Exchange Rates API](https://exchangeratesapi.io)**
+    You can copy `.env.template` to `.env` in `./configs` directory
 
-   Environment variables to set
-
-   ```txt
-   HTTP_SERVER_ADDRESS=":8080"
-   POSTGRES_CONN_STRING="postgresql://postgres:postgres@localhost:5432/plata-currency-exchange" # this is will overwritted if launched through docker compose
-   MIGRATIONS_PATH="./migrations"
-   EXCHANGE_RATES_BASE_URL="http://api.exchangeratesapi.io/v1/"
-   EXCHANGE_RATES_API_KEY= # set your exchange rates api key here
-   ```
+   **Important: You need exchange rates api key from [Exchange Rates API](https://exchangeratesapi.io)** 
 
 2. Use `Makefile` for build and run commands.
    - `make all` and then `make run` will start the server locally
+   - `make clean` removes 
    - `make compose-up` for service start via **Docker Compose** and `make compose-down` for removal
 
 ## Testing
@@ -162,3 +155,5 @@ Because of deadline i didn't had time to add unit tests for the project. But tes
 User authentication and authorization to avoid service abuse and enable rate limiting
 
 Swagger documentation
+
+Currently service layer returns raw errors from db. It's important to make domain errors to be unserstandable for user 
