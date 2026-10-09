@@ -1,0 +1,157 @@
+{
+  "info": {
+    "_postman_id": "cbbe3734-fd88-48c9-85c4-f4c41fb39f81",
+    "name": "Currency exchange api",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "53210500",
+    "_collection_link": "https://go.postman.co/collection/53210500-cbbe3734-fd88-48c9-85c4-f4c41fb39f81?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Update Quote",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const req = JSON.parse(pm.response.text());\npm.collectionVariables.set(\"uuid\", req.ID);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"base_currency\": \"{{base_currency}}\",\n    \"quote_currency\": \"{{quote_currency}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/quote",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "quote"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Quote",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/quote/{{uuid}}",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "quote",
+            "{{uuid}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Exchange Rate",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/currency?base={{base_currency}}&quote={{quote_currency}}",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "currency"
+          ],
+          "query": [
+            {
+              "key": "base",
+              "value": "{{base_currency}}"
+            },
+            {
+              "key": "quote",
+              "value": "{{quote_currency}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "External Rates API",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://api.exchangeratesapi.io/v1/latest?access_key={{api_key}}&base={{base_currency}}&symbols={{quote_currency}}",
+          "protocol": "http",
+          "host": [
+            "api",
+            "exchangeratesapi",
+            "io"
+          ],
+          "path": [
+            "v1",
+            "latest"
+          ],
+          "query": [
+            {
+              "key": "access_key",
+              "value": "{{api_key}}"
+            },
+            {
+              "key": "base",
+              "value": "{{base_currency}}"
+            },
+            {
+              "key": "symbols",
+              "value": "{{quote_currency}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_currency",
+      "value": ""
+    },
+    {
+      "key": "quote_currency",
+      "value": ""
+    },
+    {
+      "key": "uuid",
+      "value": ""
+    },
+    {
+      "key": "api_key",
+      "value": ""
+    }
+  ]
+}

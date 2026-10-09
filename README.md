@@ -2,19 +2,98 @@
 
 **Make sure your Go version is 1.27.1 or above and Docker is running**
 
-## Launch and build
+## Launch and startup
 
-1. Use `Makefile` for build and run commands.
+1. Set `.env` file in `./configs` directory
 
-- `make all` and then `make run` will start the server
+   **Important: You need exchange rates api key from [Exchange Rates API](https://exchangeratesapi.io)**
+
+   Environment variables to set
+
+   ```txt
+   HTTP_SERVER_ADDRESS=":8080"
+   POSTGRES_CONN_STRING="postgresql://postgres:postgres@localhost:5432/plata-currency-exchange" # this is will overwritted if launched through docker compose
+   MIGRATIONS_PATH="./migrations"
+   EXCHANGE_RATES_BASE_URL="http://api.exchangeratesapi.io/v1/"
+   EXCHANGE_RATES_API_KEY= # set your exchange rates api key here
+   ```
+
+2. Use `Makefile` for build and run commands.
+   - `make all` and then `make run` will start the server locally
+   - `make compose-up` for service start via **Docker Compose** and `make compose-down` for removal
 
 ## Testing
 
-TODO: Add postman collection here
+Postman Collection is here [collection](./docs/plata_exchange_rate_api_collection.json)
+You can import collection and use collection variables for testing.
+
+- POST - Update quote
+  `http://localhost:8080/quote`
+
+  request body
+
+  ```json
+  {
+    "base_currency": "{{base_currency}}", // base
+    "quote_currency": "{{quote_currency}}" // quote
+  }
+  ```
+
+  response
+
+  ```json
+  {
+    "ID": "01a11f34-0bcc-7849-b290-7c2ace9a1974", // this is ID we need for get quote by id
+    "Base": "EUR",
+    "Quote": "KZT"
+  }
+  ```
+
+- GET - Get Quote By Id `http://localhost:8080/quote/{{uuid}}`
+
+  response if job done
+
+  ```json
+  {
+    "ID": "01a11f34-0bcc-7849-b290-7c2ace9a1974",
+    "Base": "EUR",
+    "Quote": "KZT",
+    "Rate": 504.820294,
+    "Status": "DONE",
+    "FinishedAt": "2026-10-09T10:47:47.494326+05:00",
+    "CreatedAt": "2026-10-09T10:47:47.02278+05:00"
+  }
+  ```
+
+- GET - Get Latest Value By Code `http://localhost:8080/currency?base={{base_currency}}&quote={{quote_currency}}`
+
+  response is the same value as get quote by id but we are passing currency codes
+
+  ```json
+  {
+    "ID": "01a11f34-0bcc-7849-b290-7c2ace9a1974",
+    "Base": "EUR",
+    "Quote": "KZT",
+    "Rate": 504.820294,
+    "Status": "DONE",
+    "FinishedAt": "2026-10-09T10:47:47.494326+05:00",
+    "CreatedAt": "2026-10-09T10:47:47.02278+05:00"
+  }
+  ```
 
 ## Implementation plan
 
-**For more schemas and thought process also view the [Excalidraw Board](https://excalidraw.com/#json=sxA28fw9w8fmw0wAcbWxB,Bqv_NjduPQ9_sEMA-PTSig)**
+**For more schemas and thought process also view the [Excalidraw Board](https://excalidraw.com/#json=NV8u3L7LZcTUSrHOrnf3S,EFGMTt0UW9VUWZeOqnXUMA)**
+
+### Project Architecture
+
+In this project i decided to use **global worker pool** for background jobs to bound our service request to amount of request that exchange rate api can handle.
+
+I thought about using crons, but the problem with that it can create latency for users and they will wait job to be processed by next cron tick
+
+Queue (buffer channel) size is intentially big, because we can receive many jobs and workers process them as they will be free
+
+If we send many identical requests for proccessing we lookup from db existing job and send the respond with same uuid which enables idempotency and avoid unnecessary proccessing
 
 ### Project structure
 
@@ -30,7 +109,7 @@ plata-currency-exchange
 │   └── exchange-rate   // binary
 ├── cmd
 │   └── main.go         // entrypoint
-├── cmd
+├── configs
 │   └── .env            // env variables (.env.template loaded initially for 0 set-up)
 ├── go.mod
 └── internal
@@ -53,8 +132,7 @@ I want to use standard library packages as much as possible, to make codebase le
 2. Router: Standard `net/http`
 3. Env config: `github.com/joho/godotenv` with `github.com/caarlos0/env/v11` for loading and parsing
 4. Logging: Standard `log/slog`
-5. Cron Jobs: `github.com/robfig/cron/v3` not sure for now. Worker pool seems more interesting because of instant job pickup
-6. Containerization: `Docker`
+5. Containerization: `Docker`
 
 ### Database schema
 
@@ -77,9 +155,10 @@ erDiagram
     }
 ```
 
-```sql
-SELECT rate FROM quote
-WHERE status = "DONE" AND base_currency = $1 AND quote_currency = $2
-ORDER BY updated_at DESC
-LIMIT 1;
-```
+### What i've add to project
+
+Because of deadline i didn't had time to add unit tests for the project. But tests can be easily added thanks to architecture and interfaces which can mock connections.
+
+User authentication and authorization to avoid service abuse and enable rate limiting
+
+Swagger documentation

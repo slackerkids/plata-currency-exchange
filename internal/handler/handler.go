@@ -5,6 +5,7 @@ import (
 	"encoding/json/v2"
 	"log/slog"
 	"net/http"
+	"strings"
 	"uuid"
 
 	"github.com/slackerkids/plata-currency-exchange.git/internal/model"
@@ -39,7 +40,10 @@ func (h *Handler) UpdateQuote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	job, err := h.service.UpdateQuote(r.Context(), req.BaseCurrency, req.QuoteCurrency)
+	job, err := h.service.UpdateQuote(
+		r.Context(),
+		strings.ToUpper(req.BaseCurrency),
+		strings.ToUpper(req.QuoteCurrency))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -85,7 +89,11 @@ func (h *Handler) GetLatestValueByCurrencyCode(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	result, err := h.service.GetLatestQuote(r.Context(), base, quote)
+	result, err := h.service.GetLatestQuote(
+		r.Context(),
+		strings.ToUpper(base),
+		strings.ToUpper(quote),
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
